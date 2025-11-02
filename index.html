@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jogo da Velha Avançado - Busca Competitiva</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="container">
+        <h1>Jogo da Velha (Tic-Tac-Toe)</h1>
+
+        <div class="controls">
+            <div class="mode-select-group">
+                <label for="mode-select">Modo de Jogo:</label>
+                <select id="mode-select" onchange="game.updateLabels()">
+                    <option value="humano-humano">Humano vs. Humano</option>
+                    <option value="humano-ia" selected>Humano vs. Máquina</option>
+                    <option value="ia-ia">Máquina vs. Máquina (Análise Estatística)</option>
+                </select>
+            </div>
+
+            <div class="starter-select-group" style="display: flex;">
+                <label for="starter-select">Quem Começa:</label>
+                <select id="starter-select" onchange="game.updateLabels()">
+                    <option value="humano" selected>Humano (X)</option>
+                    <option value="maquina">Máquina (O)</option>
+                </select>
+            </div>
+
+            <div class="level-select-group">
+                <label for="level-select">Nível da Máquina:</label>
+                <select id="level-select" onchange="game.updateLabels()">
+                    <option value="random" selected>Fácil (Aleatório)</option>
+                    <option value="mcts">Intermediário (Monte Carlo)</option>
+                    <option value="minimax">Difícil (Invencível)</option>
+                </select>
+            </div>
+
+            <button id="start-button">Iniciar Novo Jogo</button>
+        </div>
+
+        <div class="score-board">
+            <h2>Placar</h2>
+            <p id="label-x">Vitórias Humano (X):</p>
+            <span id="score-x">0</span>
+            <p id="label-o">Vitórias Máquina (O):</p>
+            <span id="score-o">0</span>
+            <p id="current-mode">Modo Atual: Humano (X) vs. Máquina (O) [FÁCIL]</p>
+        </div>
+
+        <div id="game-board" class="board">
+        </div>
+
+        <div id="message" class="message">Selecione o modo e clique em Iniciar.</div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
