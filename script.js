@@ -135,14 +135,14 @@ class MCTSNode {
 
     getUCTScore(c = Math.sqrt(2)) {
         if (this.visits === 0) return Infinity;
-        if (this.parent.visits === 0) return Infinity; // Previne divisão por zero se o pai for a raiz e não tiver visitas
+        if (!this.parent || this.parent.visits === 0) return Infinity;
         return (this.wins / this.visits) + c * Math.sqrt(Math.log(this.parent.visits) / this.visits);
     }
 }
 
 /** Agente para o Nível Intermediário (MCTS). */
 class MCTS_Agent {
-    constructor(iterations = 5000) {
+    constructor(iterations = 10000) {
         this.iterations = iterations;
     }
 
@@ -263,7 +263,6 @@ class MCTS_Agent {
     }
 }
 
-
 // ====================================================================
 // CLASSE PRINCIPAL DO JOGO (TicTacToe)
 // ====================================================================
@@ -283,6 +282,10 @@ class TicTacToe {
             scoreX: document.getElementById('score-x'),
             scoreO: document.getElementById('score-o'),
             currentMode: document.getElementById('current-mode'),
+            iaXSelect: document.getElementById('ia-x-select'),
+            iaOSelect: document.getElementById('ia-o-select'),
+            iaXGroup: document.getElementById('ia-x-group'),
+            iaOGroup: document.getElementById('ia-o-group'),
         };
 
         this.agents = {
@@ -294,7 +297,7 @@ class TicTacToe {
         this.board = Array(9).fill(null);
         this.currentPlayer = PLAYER_X;
         this.gameActive = false;
-        this.scores = { 'X': 0, 'O': 0 };
+        this.scores = { 'X': 0, 'O': 0, 'T': 0 }; // T = empate
 
         this.init();
     }
@@ -307,6 +310,7 @@ class TicTacToe {
     }
 
     setupBoard() {
+        // Garante que o tabuleiro seja criado corretamente
         this.dom.board.innerHTML = '';
         for (let i = 0; i < 9; i++) {
             const cell = document.createElement('div');
@@ -319,7 +323,14 @@ class TicTacToe {
 
     addEventListeners() {
         this.dom.startButton.addEventListener('click', this.startGame.bind(this));
-        // Os onchange dos seletores já chamam updateLabels() no HTML
+
+        // Garante que, mesmo se o HTML usar onchange="game.updateLabels()", os selects
+        // atualizem o rótulo quando alterados — e adiciona os novos selects de IA.
+        const selects = ['mode-select', 'level-select', 'starter-select', 'ia-x-select', 'ia-o-select'];
+        selects.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('change', () => this.updateLabels());
+        });
     }
 
     // --- Lógica de UI e Placar ---
@@ -329,16 +340,20 @@ class TicTacToe {
         const level = this.dom.levelSelect.value;
         const levelText = { 'random': 'FÁCIL', 'mcts': 'INTERMEDIÁRIO', 'minimax': 'DIFÍCIL' };
 
-        // 1. Controle de Visibilidade e Habilitação
-        this.dom.levelSelect.disabled = (mode === 'humano-humano');
-        this.dom.starterSelectGroup.style.display = (mode === 'humano-ia') ? 'flex' : 'none';
+        // Esconde seletores de IA por padrão
+        if (this.dom.iaXGroup) this.dom.iaXGroup.style.display = 'none';
+        if (this.dom.iaOGroup) this.dom.iaOGroup.style.display = 'none';
 
-        // 2. Atualização dos Rótulos
         if (mode === 'humano-humano') {
+            this.dom.levelSelect.disabled = true;
+            if (this.dom.starterSelectGroup) this.dom.starterSelectGroup.style.display = 'flex';
             this.dom.labelX.textContent = "Vitórias Jogador 1 (X):";
             this.dom.labelO.textContent = "Vitórias Jogador 2 (O):";
             this.dom.currentMode.textContent = "Modo Atual: Humano (X) vs. Humano (O)";
         } else if (mode === 'humano-ia') {
+            this.dom.levelSelect.disabled = false;
+            if (this.dom.starterSelectGroup) this.dom.starterSelectGroup.style.display = 'flex';
+
             const starter = this.dom.starterSelect.value;
 
             if (starter === 'humano') {
@@ -355,14 +370,25 @@ class TicTacToe {
                 this.dom.starterSelect.querySelector('option[value="maquina"]').textContent = 'Máquina (X)';
             }
         } else { // 'ia-ia'
-            // Em IA vs IA, X é sempre a Máquina 'Random' e O usa o nível selecionado
-            this.dom.labelX.textContent = "Vitórias Máquina (X) [FÁCIL]:";
-            this.dom.labelO.textContent = `Vitórias Máquina (O) [${levelText[level]}]:`;
-            this.dom.currentMode.textContent = `Modo Atual: Máquina (X) [FÁCIL] vs. Máquina (O) [${levelText[level]}]`;
+            // Em IA vs IA, permite escolher qual IA joga como X e qual como O
+            this.dom.levelSelect.disabled = true;
+            if (this.dom.starterSelectGroup) this.dom.starterSelectGroup.style.display = 'none';
+            if (this.dom.iaXGroup) this.dom.iaXGroup.style.display = 'flex';
+            if (this.dom.iaOGroup) this.dom.iaOGroup.style.display = 'flex';
+
+            const iaX = this.dom.iaXSelect ? this.dom.iaXSelect.value : 'random';
+            const iaO = this.dom.iaOSelect ? this.dom.iaOSelect.value : 'mcts';
+
+            this.dom.labelX.textContent = `Vitórias Máquina (X) [${levelText[iaX]}]:`;
+            this.dom.labelO.textContent = `Vitórias Máquina (O) [${levelText[iaO]}]:`;
+            this.dom.currentMode.textContent = `Modo Atual: Máquina (X) [${levelText[iaX]}] vs. Máquina (O) [${levelText[iaO]}]`;
         }
 
+        // Atualiza placar na UI
         this.dom.scoreX.textContent = this.scores.X;
         this.dom.scoreO.textContent = this.scores.O;
+        const tieEl = document.getElementById('score-tie');
+        if (tieEl) tieEl.textContent = this.scores.T;
     }
 
     // --- Lógica de Início ---
@@ -372,10 +398,6 @@ class TicTacToe {
         this.gameActive = true;
         this.currentPlayer = PLAYER_X;
 
-        const mode = this.dom.modeSelect.value;
-        const starter = this.dom.starterSelect.value;
-
-        // Limpa a UI
         this.dom.board.querySelectorAll('.cell').forEach(cell => {
             cell.textContent = '';
             cell.classList.remove('x', 'o');
@@ -385,16 +407,15 @@ class TicTacToe {
         this.updateLabels();
         this.dom.message.textContent = `É a vez de ${this.currentPlayer}`;
 
-        // Inicia o turno
-        if (mode === 'ia-ia') {
-            this.iaTurn(); // Inicia o loop: iaTurn -> makeMove -> iaTurn (e assim por diante)
-        } else if (mode === 'humano-ia') {
-            const xIsMachine = (starter === 'maquina');
+        const mode = this.dom.modeSelect.value;
+        const starter = this.dom.starterSelect.value;
 
-            // Se a Máquina for 'X', ela joga primeiro
-            if (xIsMachine) {
-                this.iaTurn();
-            }
+        // Inicia turno automaticamente se for IA vs IA ou se a máquina começar em Humano vs IA
+        if (mode === 'ia-ia') {
+            // dá um pequeno atraso para o usuário ver o estado inicial
+            setTimeout(() => this.iaTurn(), 150);
+        } else if (mode === 'humano-ia' && starter === 'maquina') {
+            setTimeout(() => this.iaTurn(), 150);
         }
     }
 
@@ -438,6 +459,7 @@ class TicTacToe {
                 this.updateScores(winner);
             } else {
                 this.dom.message.textContent = "Empate!";
+                this.updateScores(null);
             }
             return;
         }
@@ -455,7 +477,7 @@ class TicTacToe {
                 if (this.gameActive) {
                     this.iaTurn();
                 }
-            }, 500);
+            }, 300);
         }
     }
 
@@ -465,12 +487,14 @@ class TicTacToe {
         const mode = this.dom.modeSelect.value;
         if (mode === 'humano-humano') return null;
 
-        const starter = this.dom.starterSelect.value;
         const level = this.dom.levelSelect.value;
+        const starter = this.dom.starterSelect.value;
 
         if (mode === 'ia-ia') {
-            // X (primeiro a jogar) é sempre o Random, O usa o nível selecionado
-            return player === PLAYER_X ? this.agents['random'] : this.agents[level];
+            // Agora ambos X e O podem ter IAs independentes
+            const iaX = this.dom.iaXSelect ? this.dom.iaXSelect.value : 'random';
+            const iaO = this.dom.iaOSelect ? this.dom.iaOSelect.value : 'mcts';
+            return player === PLAYER_X ? this.agents[iaX] : this.agents[iaO];
         }
 
         // Lógica para Humano vs IA
@@ -494,7 +518,6 @@ class TicTacToe {
 
         this.dom.message.textContent = `Máquina (${player}) pensando...`;
 
-        // Não é necessário um setTimeout aqui, pois o makeMove já usa um delay.
         const startTime = performance.now();
         const move = agent.selectMove(this.board, player);
         const endTime = performance.now();
@@ -515,13 +538,25 @@ class TicTacToe {
             this.scores.X++;
         } else if (winner === 'O') {
             this.scores.O++;
+        } else {
+            this.scores.T++;
         }
         this.dom.scoreX.textContent = this.scores.X;
         this.dom.scoreO.textContent = this.scores.O;
+        const tieEl = document.getElementById('score-tie');
+        if (tieEl) tieEl.textContent = this.scores.T;
     }
 }
 
 // Inicializa o jogo
 document.addEventListener('DOMContentLoaded', () => {
     window.game = new TicTacToe();
+
+    // Caso o HTML use atributos onchange que chamam game.updateLabels() antes
+    // do objeto existir, garantimos que os selects atualizem a UI quando mudarem.
+    const selects = ['mode-select', 'level-select', 'starter-select', 'ia-x-select', 'ia-o-select'];
+    selects.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('change', () => window.game.updateLabels());
+    });
 });

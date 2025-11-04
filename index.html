@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -39,6 +38,25 @@
                 </select>
             </div>
 
+            <!-- Novos seletores para IA vs IA -->
+            <div class="ia-select-group" id="ia-x-group" style="display: none;">
+                <label for="ia-x-select">IA (X):</label>
+                <select id="ia-x-select">
+                    <option value="random" selected>Fácil (Aleatório)</option>
+                    <option value="mcts">Intermediário (Monte Carlo)</option>
+                    <option value="minimax">Difícil (Minimax)</option>
+                </select>
+            </div>
+
+            <div class="ia-select-group" id="ia-o-group" style="display: none;">
+                <label for="ia-o-select">IA (O):</label>
+                <select id="ia-o-select">
+                    <option value="random">Fácil (Aleatório)</option>
+                    <option value="mcts" selected>Intermediário (Monte Carlo)</option>
+                    <option value="minimax">Difícil (Minimax)</option>
+                </select>
+            </div>
+
             <button id="start-button">Iniciar Novo Jogo</button>
         </div>
 
@@ -48,16 +66,16 @@
             <span id="score-x">0</span>
             <p id="label-o">Vitórias Máquina (O):</p>
             <span id="score-o">0</span>
+            <p>Empates:</p>
+            <span id="score-tie">0</span>
             <p id="current-mode">Modo Atual: Humano (X) vs. Máquina (O) [FÁCIL]</p>
         </div>
 
-        <div id="game-board" class="board">
-        </div>
+        <div id="game-board" class="board"></div>
 
         <div id="message" class="message">Selecione o modo e clique em Iniciar.</div>
     </div>
 
     <script src="script.js"></script>
 </body>
-
 </html>
